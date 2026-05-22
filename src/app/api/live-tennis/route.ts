@@ -9,34 +9,40 @@ export async function GET(request: Request) {
   }
 
   try {
-    const sportsRes = await fetch(`https://api.the-odds-api.com/v4/sports?apiKey=${apiKey}`, { signal: AbortSignal.timeout(10000) });
+    // Try ATP Hamburg Open first (has matches right now)
+    const sportsToTry = ["tennis_atp_hamburg_open", "tennis_wta_strasbourg", "tennis_atp_french_open", "tennis_wta_french_open"];
 
-    if (!sportsRes.ok) {
-      const err = await sportsRes.text();
-      return NextResponse.json({ success: false, error: `HTTP ${sportsRes.status}`, details: err });
+    for (const sportKey of sportsToTry) {
+      const oddsRes = await fetch(
+        `https://api.the-odds-api.com/v4/sports/${sportKey}/odds?apiKey=${apiKey}&regions=uk,eu,us&markets=h2h`,
+        { cache: 'no-store', signal: AbortSignal.timeout(15000) }
+      );
+
+      if (oddsRes.ok) {
+        const data = await oddsRes.json();
+        if (data && data.length > 0) {
+          return NextResponse.json({ 
+            success: true, 
+            totalMatches: data.length,
+            matches: data,
+            sportKey: sportKey
+          });
+        }
+      }
     }
 
-    const sports = await sportsRes.json();
-    const tennis = sports.find((s: any) => s.title?.toLowerCase().includes('tennis'));
-
-    if (!tennis) {
-      return NextResponse.json({ success: false, error: "No tennis sports found" });
-    }
-
-    const oddsRes = await fetch(`https://api.the-odds-api.com/v4/sports/${tennis.key}/odds?apiKey=${apiKey}&regions=uk,eu,us&markets=h2h`, {
-      cache: 'no-store',
-      signal: AbortSignal.timeout(15000)
+    // If no matches found, return empty
+    return NextResponse.json({ 
+      success: true, 
+      totalMatches: 0,
+      matches: [],
+      message: "No matches currently available for these tournaments"
     });
 
-    if (!oddsRes.ok) {
-      const err = await oddsRes.text();
-      return NextResponse.json({ success: false, error: `HTTP ${oddsRes.status}`, details: err });
-    }
-
-    const data = await oddsRes.json();
-    return NextResponse.json({ success: true, totalMatches: data?.length || 0, matches: data || [] });
-
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.name === 'TimeoutError' ? 'Request timeout' : error.message });
+    return NextResponse.json({ 
+      success: false, 
+      error: error.name === 'TimeoutError' ? 'Request timeout' : error.message 
+    });
   }
 }
