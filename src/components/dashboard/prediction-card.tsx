@@ -4,12 +4,17 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, getTimeUntilMatch } from "@/lib/utils";
-import { Target, Clock, Zap, ChevronDown, ChevronUp } from "lucide-react";
+import { Target, Clock, Zap, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
 
 export function PredictionCard({ prediction, bankroll, index = 0 }: any) {
   const [expanded, setExpanded] = useState(false);
+  
+  // Determine which player is the underdog based on odds
   const stakeAmount = (bankroll?.unitSize || 100) * prediction.suggestedUnits;
   const potentialWin = stakeAmount * (prediction.bookmakerOdds - 1);
+  
+  // The underdog is the one highlighted in green in the prediction
+  const underdogName = prediction.underdog;
 
   return (
     <Card className="border-cyan-500/30 hover:border-cyan-400/50 transition-all overflow-hidden">
@@ -20,13 +25,25 @@ export function PredictionCard({ prediction, bankroll, index = 0 }: any) {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Target className="w-4 h-4 text-cyan-400" />
-              <span className="text-xs font-mono text-cyan-400/70 uppercase">{prediction.tournament}</span>
+              <span className="text-xs font-mono text-cyan-400/70 uppercase">{prediction.tournament?.replace("tennis_", "").replace(/_/g, " ")}</span>
             </div>
-            <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
-              <span className={prediction.player1 === prediction.underdog ? "text-green-400" : "text-white"}>{prediction.player1}</span>
-              <span className="text-cyan-500/50">vs</span>
-              <span className={prediction.player2 === prediction.underdog ? "text-green-400" : "text-white"}>{prediction.player2}</span>
-            </CardTitle>
+            
+            {/* UNDERDOG HIGHLIGHT */}
+            <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+              <div className="flex items-center gap-2 mb-1">
+                <AlertCircle className="w-4 h-4 text-green-400" />
+                <span className="text-xs font-mono text-green-400 uppercase font-bold">UNDERDOG TO BACK</span>
+              </div>
+              <CardTitle className="text-2xl font-bold text-green-400">
+                {underdogName}
+              </CardTitle>
+            </div>
+            
+            {/* Full Match */}
+            <div className="text-sm font-mono text-cyan-400/70 mt-2">
+              {prediction.player1} vs {prediction.player2}
+            </div>
+            
             <div className="flex items-center gap-3 text-sm font-mono text-cyan-400/60">
               <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{getTimeUntilMatch(prediction.startTime)}</span>
             </div>
@@ -58,7 +75,7 @@ export function PredictionCard({ prediction, bankroll, index = 0 }: any) {
         <div className="flex items-center justify-between p-3 rounded-lg bg-black/40 border border-cyan-500/20">
           <div className="flex items-center gap-4">
             <div>
-              <span className="text-xs font-mono text-cyan-400/60">Stake</span>
+              <span className="text-xs font-mono text-cyan-400/60">Stake ({prediction.suggestedUnits} units)</span>
               <div className="text-lg font-bold font-mono text-white">{formatCurrency(stakeAmount)}</div>
             </div>
             <div className="h-8 w-px bg-cyan-500/30" />
